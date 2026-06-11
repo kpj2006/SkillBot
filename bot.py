@@ -14,6 +14,7 @@ load_dotenv()
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 DISCORD_CHANNEL_ID = os.getenv('DISCORD_CHANNEL_ID')
+DISCORD_CHANNEL_ID_INT = None
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2')
 SKILL_FILE_PATH = os.getenv('SKILL_FILE_PATH', '.clinerules')
 OLLAMA_URL = "http://localhost:11434/api/generate"
@@ -68,7 +69,7 @@ async def generate_ollama_response(prompt: str, context: str) -> str:
 
 async def process_message(message: discord.Message):
     """Process a single message and generate a reply safely."""
-    if message.author.bot or str(message.channel.id) != DISCORD_CHANNEL_ID:
+    if message.author.bot or message.channel.id != DISCORD_CHANNEL_ID_INT:
         return
 
     # Use lock to ensure only one message is processed by Ollama at a time
@@ -107,7 +108,7 @@ async def on_ready():
     logger.info("Checking for missed messages...")
     
     try:
-        channel = await client.fetch_channel(int(DISCORD_CHANNEL_ID))
+        channel = await client.fetch_channel(DISCORD_CHANNEL_ID_INT)
         
         # Find the last message sent by the bot
         last_bot_msg = None
@@ -142,8 +143,21 @@ async def on_message(message: discord.Message):
     await process_message(message)
 
 if __name__ == "__main__":
-    if not DISCORD_TOKEN or not DISCORD_CHANNEL_ID:
-        logger.error("Critical missing config: DISCORD_TOKEN and DISCORD_CHANNEL_ID must be set in .env")
-    else:
-        logger.info("Starting bot...")
-        client.run(DISCORD_TOKEN)
+    if not DISCORD_TOKEN:
+        logger.critical("DISCORD_TOKEN is missing from environment. Exiting.")
+        exit(1)
+
+    if not DISCORD_CHANNEL_ID:
+        logger.critical("DISCORD_CHANNEL_ID is missing from environment. Exiting.")
+        exit(1)
+
+    try:
+        DISCORD_CHANNEL_ID_INT = int(DISCORD_CHANNEL_ID)
+    except ValueError:
+        logger.critical(
+            f"DISCORD_CHANNEL_ID '{DISCORD_CHANNEL_ID}' is not a valid integer. Exiting."
+        )
+        exit(1)
+
+    logger.info("Starting bot...")
+    client.run(DISCORD_TOKEN)
