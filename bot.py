@@ -50,8 +50,10 @@ def _save_gap_log(entries):
     with open(GAP_LOG_PATH, "w", encoding="utf-8") as f:
         json.dump(entries, f, indent=2, default=str)
 
+gap_log_lock = asyncio.Lock()
 
-def _log_gap(query, reason, thread_id=None):
+async def _log_gap(query, reason, thread_id=None):
+ async with gap_log_lock:
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "query": query,
@@ -142,6 +144,7 @@ async def _get_or_create_thread(message: discord.Message, channel: discord.TextC
         if not thread.archived and not thread.locked:
             return thread
         logger.warning(f"Thread {thread.id} is archived/locked — creating a new one")
+        return None # cannot create thread from message already in a thread
 
     try:
         author = message.author
