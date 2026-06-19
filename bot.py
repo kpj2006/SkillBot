@@ -163,6 +163,26 @@ async def _get_or_create_thread(message: discord.Message, channel: discord.TextC
     return None
 
 
+def is_query_covered(query: str, context: str = "") -> bool:
+    """Check if the query or its conversation context contains keywords covered in .clinerules."""
+    q = query.lower()
+    ctx = context.lower()
+    
+    # Predefined keyword maps based on .clinerules
+    categories = {
+        "setup": ["setup", "install", "run", "build", "clone", "docker", "env", "start", "dev server", "npm run dev"],
+        "readme": ["readme", "read me", "documentation", "project name", "description", "user flow", "feature"],
+        "contribute": ["contribute", "contributor", "fork", "pr", "pull request", "issue", "branch", "git", "onboarding"],
+        "error": ["error", "exception", "bug", "fail", "crash", "issue", "logs", "broken", "debug", "not working"]
+    }
+    
+    for cat, keywords in categories.items():
+        for kw in keywords:
+            if kw in q or (ctx and kw in ctx):
+                return True
+    return False
+
+
 async def process_message(message: discord.Message):
     """Process a single message: new messages in the main channel spawn a thread,
     messages in existing threads continue the conversation there."""
@@ -170,9 +190,12 @@ async def process_message(message: discord.Message):
         return
 
     is_in_thread = isinstance(message.channel, discord.Thread)
-    is_in_configured_channel = message.channel.id == DISCORD_CHANNEL_ID_INT
+    is_in_configured_channel = (
+        (message.channel.parent.id if is_in_thread else message.channel.id)
+        == DISCORD_CHANNEL_ID_INT
+    )
 
-    if not is_in_thread and not is_in_configured_channel:
+    if not is_in_configured_channel:
         return
 
     author = message.author
@@ -211,6 +234,24 @@ async def process_message(message: discord.Message):
                 full_prompt = conversation_context
             else:
                 full_prompt = message.content
+
+            # Check if the query has sufficient information/context based on .clinerules
+            if not is_query_covered(message.content, conversation_context):
+                full_prompt = (
+                    f"The user is asking: '{message.content}'. "
+                    f"This query is not covered by the standard guidelines in .clinerules. "
+                    f"Generate a polite response asking the user to clarify if they need help with: "
+                    f"1. Setting up the project template\n"
+                    f"2. Writing or updating the README\n"
+                    f"3. Contributing to the repository\n"
+                    f"4. Debugging an error\n"
+                    f"Keep the response short, friendly, and under 5 lines."
+                )
+                await _log_gap(
+                    message.content,
+                    "insufficient_info",
+                    thread_id=thread.id,
+                )
 
             response_text, used_fallback = await generate_ollama_response(full_prompt, skill_context)
 
