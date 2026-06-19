@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import logging
 import discord
@@ -163,10 +164,9 @@ async def _get_or_create_thread(message: discord.Message, channel: discord.TextC
     return None
 
 
-def is_query_covered(query: str, context: str = "") -> bool:
-    """Check if the query or its conversation context contains keywords covered in .clinerules."""
+def is_query_covered(query: str) -> bool:
+    """Check if the query contains keywords covered in .clinerules using word boundaries."""
     q = query.lower()
-    ctx = context.lower()
     
     # Predefined keyword maps based on .clinerules
     categories = {
@@ -178,7 +178,9 @@ def is_query_covered(query: str, context: str = "") -> bool:
     
     for cat, keywords in categories.items():
         for kw in keywords:
-            if kw in q or (ctx and kw in ctx):
+            # Use raw pattern and re.escape for safety, matching word boundaries for the keyword/phrase
+            pattern = r'\b' + re.escape(kw) + r'\b'
+            if re.search(pattern, q):
                 return True
     return False
 
@@ -236,8 +238,11 @@ async def process_message(message: discord.Message):
                 full_prompt = message.content
 
             # Check if the query has sufficient information/context based on .clinerules
-            if not is_query_covered(message.content, conversation_context):
+            if not is_query_covered(message.content):
+                # Pass conversation context explicitly to the LLM so it has thread history for the clarifying question
+                history_str = f"Previous conversation history:\n{conversation_context}\n\n" if conversation_context else ""
                 full_prompt = (
+                    f"{history_str}"
                     f"The user is asking: '{message.content}'. "
                     f"This query is not covered by the standard guidelines in .clinerules. "
                     f"Generate a polite response asking the user to clarify if they need help with: "
