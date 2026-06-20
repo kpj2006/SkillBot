@@ -105,6 +105,20 @@ async def generate_ollama_response(prompt: str, context: str) -> tuple[str, bool
                 logger.warning(f"Empty Ollama response (attempt {attempt}/{MAX_RETRIES})")
         except httpx.TimeoutException:
             logger.error(f"Ollama timed out (attempt {attempt}/{MAX_RETRIES})")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Ollama HTTP error {e.response.status_code} (attempt {attempt}/{MAX_RETRIES}): {e}")
+            if e.response.status_code == 404:
+                err_msg = (
+                    f"I'm sorry, the local Ollama model '{OLLAMA_MODEL}' was not found (HTTP 404).\n"
+                    f"Please contact @kpj2006 or run `ollama pull {OLLAMA_MODEL}` on your machine."
+                )
+                return err_msg, True
+            elif 400 <= e.response.status_code < 500:
+                err_msg = (
+                    f"Local Ollama configuration or client error (HTTP {e.response.status_code}).\n"
+                    f"Details: {e.response.text}"
+                )
+                return err_msg, True
         except httpx.RequestError as e:
             logger.error(f"Ollama unreachable (attempt {attempt}/{MAX_RETRIES}): {e}")
         except Exception as e:
@@ -147,6 +161,18 @@ async def _get_or_create_thread(message: discord.Message, channel: discord.TextC
         logger.warning(f"Thread {thread.id} is archived/locked — creating a new one")
         return None # cannot create thread from message already in a thread
 
+    # If the message already has a thread attached to it, fetch and use it
+    if message.flags.has_thread:
+        try:
+            thread = message.guild.get_thread(message.id) if message.guild else None
+            if not thread:
+                thread = await client.fetch_channel(message.id)
+            if isinstance(thread, discord.Thread) and not thread.archived and not thread.locked:
+                logger.info(f"Reusing existing active thread {thread.id} from message object")
+                return thread
+        except Exception as fetch_err:
+            logger.error(f"Failed to fetch existing thread for message {message.id}: {fetch_err}")
+
     try:
         author = message.author
         thread = await message.create_thread(
@@ -158,7 +184,20 @@ async def _get_or_create_thread(message: discord.Message, channel: discord.TextC
     except discord.Forbidden:
         logger.error(f"Cannot create thread — missing permissions in channel {channel.id}")
     except discord.HTTPException as e:
-        logger.error(f"Discord API error creating thread: {e}")
+        if e.code == 160004:
+            logger.info(f"Thread already exists for message {message.id}. Attempting to retrieve it...")
+            try:
+                # Thread ID equals the message ID it was created from
+                thread = message.guild.get_thread(message.id) if message.guild else None
+                if not thread:
+                    thread = await client.fetch_channel(message.id)
+                if isinstance(thread, discord.Thread):
+                    logger.info(f"Successfully retrieved existing thread {thread.id}")
+                    return thread
+            except Exception as fetch_err:
+                logger.error(f"Failed to fetch existing thread for message {message.id}: {fetch_err}")
+        else:
+            logger.error(f"Discord API error creating thread: {e}")
     except Exception as e:
         logger.error(f"Unexpected error creating thread for {message.author.id}: {e}")
     return None
@@ -211,7 +250,7 @@ async def process_message(message: discord.Message):
         channel = message.channel
         thread = await _get_or_create_thread(message, channel)
         if not thread:
-            _log_gap(message.content, "thread_creation_failed")
+            await _log_gap(message.content, "thread_creation_failed")
             try:
                 await message.reply(
                     "I couldn't create a thread to answer your question. Please ask a maintainer for help."
@@ -261,7 +300,7 @@ async def process_message(message: discord.Message):
             response_text, used_fallback = await generate_ollama_response(full_prompt, skill_context)
 
             if used_fallback or not skill_context:
-                _log_gap(
+                await _log_gap(
                     message.content,
                     "ollama_unavailable" if used_fallback else "no_skill_context",
                     thread_id=thread.id,
@@ -269,7 +308,7 @@ async def process_message(message: discord.Message):
         except Exception as e:
             logger.error(f"Unexpected error processing message from {author.name}: {e}")
             response_text = "An unexpected error occurred. Please try again or ask a maintainer."
-            _log_gap(message.content, f"processing_error: {e}", thread_id=thread.id)
+            await _log_gap(message.content, f"processing_error: {e}", thread_id=thread.id)
 
         if len(response_text) > 1900:
             response_text = response_text[:1896] + "..."
