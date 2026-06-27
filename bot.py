@@ -37,9 +37,14 @@ THREAD_HISTORY_LIMIT = 10  # messages to pull from thread as conversation contex
 
 
 def clean_bot_mention(content: str) -> str:
-    """Remove the bot's mention from the content."""
+    """Remove a leading mention of the bot from the content."""
     if client.user:
-        content = re.sub(rf'<@!?{client.user.id}>', '', content)
+        content = re.sub(
+            rf'^\s*(?:<@!?{client.user.id}>\s*)+',
+            '',
+            content,
+            count=1,
+        )
     return content.strip()
 
 
