@@ -200,27 +200,6 @@ async def handle_query(message):
 
 **ChromaDB integration (aligned with Skill Updater Phase 2 and PR Dashboard Phase 1):**
 
-```python
-import chromadb
-
-client = chromadb.PersistentClient(path="./chroma_skills")
-
-# Collection per repo — loaded at startup, updated on git pull
-def index_repo_skills(repo_name: str, skill_path: str):
-    collection = client.get_or_create_collection(repo_name)
-    for skill_file in glob(f"{skill_path}/**/*.md"):
-        content = open(skill_file).read()
-        collection.upsert(
-            ids=[skill_file],
-            embeddings=[embed(content)],
-            documents=[content]
-        )
-
-# Query the right collection per channel
-def resolve_with_skills(query: str, repo_name: str) -> str:
-    collection = client.get_collection(repo_name)
-    results = collection.query(query_embeddings=[embed(query)], n_results=3)
-    return build_answer(query, results["documents"][0])
 ```
 
 **Why this matters for the system:**
