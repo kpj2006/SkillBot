@@ -1,4 +1,4 @@
-# Contributing to TODO: Project Name
+# Contributing to AOSSIE Skill Bot
 
 ⭐ First off, thank you for considering contributing to this project! ⭐
 
@@ -68,36 +68,63 @@ What we expect:
 
 ### Prerequisites
 
-TODO: List prerequisites specific to your project
+Before you start, make sure you have the following installed:
+* **Python 3.10+**
+* **Ollama** running locally on your machine with the configured model pulled (e.g. `ollama pull llama3.2`).
 
 ### Setup
 
 1. **Fork the Repository**
-   ```bash
-   # Click the 'Fork' button at the top right of this page
-   ```
+
+   Click the 'Fork' button at the top right of the [SkillBot repository](https://github.com/AOSSIE-Org/SkillBot).
 
 2. **Clone Your Fork**
+
    ```bash
-   git clone https://github.com/YOUR_USERNAME/TODO.git
-   cd TODO
+   git clone https://github.com/YOUR_USERNAME/SkillBot.git
+   cd SkillBot
    ```
 
 3. **Add Upstream Remote**
+
    ```bash
-   git remote add upstream https://github.com/AOSSIE-Org/TODO.git
+   git remote add upstream https://github.com/AOSSIE-Org/SkillBot.git
    ```
 
 4. **Install Dependencies**
-   ```bash
-   npm install
-   # or yarn install
-   # or pnpm install
+
+   Create and activate a virtual environment, then install Python dependencies:
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
    ```
 
-5. **Run the Project**
+   **macOS / Linux:**
+
    ```bash
-   npm run dev
+   python -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+5. **Configure Environment Variables**
+
+   Copy `.env.example` to `.env`:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then open `.env` and fill in your Discord Bot Token and target channel ID.
+
+6. **Run the Project**
+
+   ```bash
+   python bot.py
    ```
 
 ## 🔄 Development Workflow
@@ -119,14 +146,17 @@ git checkout -b fix/your-bug-fix
 - Add comments where necessary
 - Update documentation if needed
 
-### 3. Test Your Changes
+### 3. Test & Format Your Changes
 
-TODO: Add project-specific testing instructions
+Before committing, ensure your code passes the linting and style checks. We use `pre-commit` to validate code formatting and hygiene:
 
 ```bash
-npm test
-# or
-npm run lint
+# Install pre-commit
+pip install pre-commit
+pre-commit install
+
+# Run checks on all files
+pre-commit run --all-files
 ```
 
 ### 4. Commit Your Changes
@@ -223,27 +253,22 @@ Steps to test the changes
 
 ## 📝 Code Style Guidelines
 
-TODO: Add project-specific code style guidelines
+We follow standard Python coding practices to ensure the bot codebase remains clean, readable, and maintainable.
 
 ### General Guidelines
 
 - Use meaningful variable and function names
 - Keep functions small and focused
 - Add comments for complex logic
-- Remove console.logs before committing
-- Avoid code duplication
-- Avoid unnecessary complexity and minor over-optimization
+- Remove `print` statements and debugging logs before committing; use the configured `logging` logger instead (`logger.info`, `logger.error`, etc.).
+- Avoid code duplication and unnecessary complexity
 
-### JavaScript/TypeScript
-- Use ES6+ syntax
-- Prefer `const` over `let`, avoid `var`
-- Use arrow functions where appropriate
-- Follow ESLint rules
+### Python & Async Style
 
-### Python
-- Follow PEP 8 style guide
-- Use type hints where applicable
-- Write docstrings for functions/classes
+- **PEP 8 Compliance**: Follow the PEP 8 style guide for formatting and conventions.
+- **Asynchronous Code (`async`/`await`)**: Since we use `discord.py` and `httpx` async clients, ensure all network/Discord calls are async-safe. Do not block the event loop with synchronous operations.
+- **Type Hints**: Use type hints where applicable (e.g., `async def handle_query(message: discord.Message) -> None`).
+- **Docstrings**: Write descriptive docstrings for functions, methods, and classes explaining their input parameters and return types.
 
 ## 🔧 Debugging Pre-commit Hooks
 
