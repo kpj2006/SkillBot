@@ -135,6 +135,7 @@ This is part of [skills ecosystem](https://github.com/AOSSIE-Org/Skills).
 4. [Skill Updater Pipeline](https://github.com/kpj2006/skill-updater)
 
 ---
+
 ## 🏁 Getting Started
 
 ### Prerequisites
@@ -149,13 +150,16 @@ This is part of [skills ecosystem](https://github.com/AOSSIE-Org/Skills).
 ### Installation & Run
 
 #### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/AOSSIE-Org/SkillBot.git
 cd SkillBot
 ```
 
 #### 2. Set Up Virtual Environment & Dependencies
+
 **Windows (PowerShell):**
+
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -163,6 +167,7 @@ pip install -r requirements.txt
 ```
 
 **macOS / Linux:**
+
 ```bash
 python -m venv venv
 source venv/bin/activate
@@ -170,11 +175,15 @@ pip install -r requirements.txt
 ```
 
 #### 3. Configure Environment Variables
+
 Copy the `.env.example` file to `.env`:
+
 ```bash
 cp .env.example .env
 ```
+
 Fill in the configuration details:
+
 ```env
 DISCORD_TOKEN=your_discord_bot_token
 DISCORD_CHANNEL_ID=your_target_channel_id
@@ -183,10 +192,13 @@ SKILL_FILE_PATH=.clinerules
 ```
 
 #### 4. Launching the Bot
+
 Start the bot using Python:
+
 ```bash
 python bot.py
 ```
+
 *(On Windows, you can also use `start_bot_hidden.vbs` to execute the bot silently in the background)*.
 
 ---
