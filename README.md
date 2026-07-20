@@ -4,7 +4,7 @@
 <!-- Organization Logo -->
 <div align="center" style="display: flex; align-items: center; justify-content: center; gap: 16px;">
   <img alt="AOSSIE" src="public/aossie-logo.svg" width="175">
-  <img src="public/todo-project-logo.svg" width="175" />
+  <img src="public/skill_logo.png" alt="AOSSIE Skill Bot logo" width="175" />
 </div>
 
 &nbsp;
@@ -12,7 +12,7 @@
 <!-- Organization Name -->
 <div align="center">
 
-[![Static Badge](https://img.shields.io/badge/aossie.org/TODO-228B22?style=for-the-badge&labelColor=FFC517)](https://TODO.aossie.org/)
+[![Static Badge](https://img.shields.io/badge/aossie.org/SkillBot-228B22?style=for-the-badge&labelColor=FFC517)](https://github.com/AOSSIE-Org/SkillBot)
 
 <!-- Correct deployed url to be added -->
 
@@ -41,6 +41,7 @@
   <img src="https://img.shields.io/youtube/channel/subscribers/UCKVVLbawY7Gej_3o2WKsoiA?style=flat&logo=youtube&logoColor=white%20&logoSize=auto&labelColor=FF0000&color=FF0000" alt="Youtube Badge"></a>
 
 
+
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/AOSSIE-Org/SkillBot/badge)](https://scorecard.dev/viewer/?uri=github.com/AOSSIE-Org/SkillBot)
 
 [![Best Practices](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FAOSSIE-Org%2FSkillBot%2Fmain%2Fchecklist-status.json&logo=openssf)](./BestPracticesChecklist.md)
@@ -49,202 +50,162 @@
 ---
 
 <div align="center">
-<h1>TODO: Project Name</h1>
+<h1>AOSSIE Skill Bot</h1>
+<h3>Local-First Discord Assistant for Contributor Support and Repository-Aware Q&A</h3>
 </div>
 
-[TODO](https://TODO.stability.nexus/) is a ... TODO: Project Description.
+**Skill Bot** is a core component of the [AOSSIE Skills Ecosystem](https://github.com/AOSSIE-Org/Skills). It serves as a local-first, context-aware Discord bot designed to assist open-source contributors with onboarding, setup guidance, error debugging, and repository-specific queries. 
+
+By analyzing user queries, dynamically detecting the target repository within the organization, loading rules from `AGENTS.md`, and executing local inference via Ollama, Skill Bot delivers precise, grounded, skills-first answers in dedicated thread environments.
 
 ---
 
-## 🚀 Features
+## 🏗️ Role in the Skills Ecosystem
 
-TODO: List your main features here:
+Skill Bot acts as the primary user-facing assistant in the skills feedback loop:
 
-- **Feature 1**: Description
-- **Feature 2**: Description
-- **Feature 3**: Description
-- **Feature 4**: Description
+```mermaid
+flowchart TD
+    %% Nodes
+    SC["<b><font color='#F59E0B'>Skills Context</font></b><br><br>Skills Core (Shared Org wide skills)<br>per-repo skills (AGENTS.md + skills/ directory)"]
+    Contributors["Contributors"]
+    Maintainers["Maintainers"]
+    
+    SB["<b><font color='#F59E0B'>Skill Bot</font></b> (Discord Assistant)<br><br>Answers contributor questions<br>using asked question-oriented project skills ➔ LLM fallback"]
+    PD["<b><font color='#F59E0B'>PR Dashboard</font></b> (Merge Analysis)<br><br>Clusters PRs semantically, injects skills & communication(e.g. Discord) context.<br>Extracts PR changes briefly & open questions for maintainers to review.<br>Prepares Conflict DAG with merge reasoning & post-merge impact."]
+    SU["<b><font color='#F59E0B'>Skill Updater</font></b> (Knowledge Evolution)<br><br>Collects all logs from different components.<br>Updates relevant repo-skills by asking maintainers or admins<br>to review and approve generated updates."]
+
+    %% Edges
+    %% Contributor Flow
+    Contributors -- "Ask Questions in Discord" --> SB
+    SC -- "Powers answers" --> SB
+    SB -- "If gaps found, send logs for maintainers<br>to answer and update project skill via updater." --> SU
+
+    %% Maintainer Flow
+    Maintainers -- "Reviews PRs<br>with" --> PD
+    SC -- "Powers reasoning" --> PD
+    PD -- "If gaps found, send logs for maintainers<br>to answer and update those project skills via updater." --> SU
+
+    %% Feedback Loop & Sync
+    Maintainers -- "Collects communication platform (e.g. Discord) discussions, filters important<br>topics by giving that repo-skills context, and sends suggested updates to maintainers<br>to reformat or modify as needed (maintainer approve)" --> SU
+    SU -- "PR Skill Updater bot opens PR for gap skills and<br>recently merged PR context (maintainers approve)" --> SC
+
+    %% Style Classes
+    classDef yellowBox fill:#1E293B,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC;
+    classDef purpleBox fill:#1E293B,stroke:#8B5CF6,stroke-width:2px,color:#F8FAFC;
+    
+    class SC,SB,PD,SU yellowBox;
+    class Contributors,Maintainers purpleBox;
+```
+
+1. **Contributor Q&A**: A contributor posts a query in a designated channel or tags the bot.
+2. **Context Retrieval**: Skill Bot searches the global `.clinerules`, dynamically routes queries to that repository's skills (`.agents/` + `AGENTS.md`) according to the user query, and provides this context to the local LLM to answer the user.
+3. **LLM Fallback & Gap Signaling**: If matching context is found in the repository rules, the query is answered by the local LLM. If there is a lack of necessary details, the query is written to `gap_log.json` and the bot notifies the user that the query is currently out of context and maintainers will be notified. These gap signals are later consumed by maintainers in Skill Updater to update the skills context(skills core + that repo's skill).
+4. **Knowledge Capture Loop**: The [Skill Updater](https://github.com/kpj2006/skill-updater) parses `gap_log.json` to prioritize and also extract discussions from Discord, automatically generating PR updates to keep the repository's skills core aligned with recent development decisions.
+
+---
+
+## 🚀 Key Features
+
+* **Dynamic Repository Routing**: Dynamically discovers adjacent repositories in the workspace, detects the target project using query keywords or local LLM classification, and applies the repository's custom context (`AGENTS.md` / `.clinerules`).
+* **Thread-per-Query Continuity**: Every new user interaction spawns a dedicated Discord thread. This prevents main channel pollution, keeps the conversation focused, and preserves thread-scoped history.
+* **Mentor-Style Clarification**: Asks focused clarifying questions for ambiguous queries before giving a full answer, improving resolution rates and minimizing LLM noise.
+* **Fully Local Inference**: Relies entirely on a local Ollama instance (such as `llama3.2` or `qwen2.5:7b`), ensuring all contributor data remains local and avoiding external cloud API costs.
+* **Startup Backlog Recovery**: Scans the channel history upon startup to process any user queries that were posted while the bot was offline.
+* **Structured Gap Logging**: Emits structured knowledge gap events (`gap_log.json`) recording queries that couldn't be answered using local rules, feeding into the automated updater pipeline.
 
 ---
 
 ## 💻 Tech Stack
 
-TODO: Update based on your project
-
-### Frontend
-- React / Next.js / Flutter / React Native
-- TypeScript
-- TailwindCSS
-
-### Backend
-- Flask / FastAPI / Node.js / Supabase
-- Database: PostgreSQL / SQLite / MongoDB
-
-### AI/ML (if applicable)
-- LangChain / LangGraph / LlamaIndex
-- Google Gemini / OpenAI / Anthropic Claude
-- Vector Database: Weaviate / Pinecone / Chroma
-- RAG / Prompt Engineering / Agent Frameworks
-
-### Blockchain (if applicable)
-- Solidity / solana / cardano / ergo Smart Contracts
-- Hardhat / Truffle / foundry
-- Web3.js / Ethers.js / Wagmi
-- OpenZeppelin / alchemy / Infura
-
----
-
-## ✅ Project Checklist
-
-TODO: Complete applicable items based on your project type
-
-- [ ] **The protocol** (if applicable):
-   - [ ] has been described and formally specified in a paper.
-   - [ ] has had its main properties mathematically proven.
-   - [ ] has been formally verified.
-- [ ] **The smart contracts** (if applicable):
-   - [ ] were thoroughly reviewed by at least two knights of The Stable Order.
-   - [ ] were deployed to: [Add deployment details]
-- [ ] **The mobile app** (if applicable):
-   - [ ] has an _About_ page containing the Stability Nexus's logo and pointing to the social media accounts of the Stability Nexus.
-   - [ ] is available for download as a release in this repo.
-   - [ ] is available in the relevant app stores.
-- [ ] **The AI/ML components** (if applicable):
-   - [ ] LLM/model selection and configuration are documented.
-   - [ ] Prompts and system instructions are version-controlled.
-   - [ ] Content safety and moderation mechanisms are implemented.
-   - [ ] API keys and rate limits are properly managed.
+* **Discord Bot Framework**: Discord.py (with Message Content Intent enabled)
+* **Local Model Server**: Ollama
+* **Programming Language**: Python 3.10+
+* **HTTP Client**: httpx (async requests to Ollama API)
+* **Configuration & Environment**: dotenv (dotenv-based configuration)
 
 ---
 
 ## 🔗 Repository Links
 
-TODO: Update with your repository structure
-
-1. [Main Repository](https://github.com/AOSSIE-Org/TODO)
-2. [Frontend](https://github.com/AOSSIE-Org/TODO/tree/main/frontend) (if separate)
-3. [Backend](https://github.com/AOSSIE-Org/TODO/tree/main/backend) (if separate)
-
----
-
-## 🏗️ Architecture Diagram
-
-TODO: Add your system architecture diagram here
-
-```
-[Architecture Diagram Placeholder]
-```
-
-You can create architecture diagrams using:
-- [Draw.io](https://draw.io)
-- [Excalidraw](https://excalidraw.com)
-- [Lucidchart](https://lucidchart.com)
-- [Mermaid](https://mermaid.js.org) (for code-based diagrams)
-
-Example structure to include:
-- Frontend components
-- Backend services
-- Database architecture
-- External APIs/services
-- Data flow between components
+This is part of [skills ecosystem](https://github.com/AOSSIE-Org/Skills).
+1. [Skills Core Repository](https://github.com/AOSSIE-Org/Skills)
+2. [Interactive Simulation](https://github.com/kpj2006/InteractiveSimulation) (Live Demo: [demo](https://kpj2006.github.io/InteractiveSimulation/))
+3. [Pull Request Dashboard](https://github.com/AOSSIE-Org/PullRequestDashboard)
+4. [Skill Updater Pipeline](https://github.com/kpj2006/skill-updater)
 
 ---
 
-## 🔄 User Flow
-
-TODO: Add user flow diagrams showing how users interact with your application
-
-```
-[User Flow Diagram Placeholder]
-```
-
-### Key User Journeys
-
-TODO: Document main user flows:
-
-1. **User Journey 1**: Description
-   - Step 1
-   - Step 2
-   - Step 3
-
-2. **User Journey 2**: Description
-   - Step 1
-   - Step 2
-   - Step 3
-
-3. **User Journey 3**: Description
-   - Step 1
-   - Step 2
-   - Step 3
-
----
-
-## �🍀 Getting Started
+## 🏁 Getting Started
 
 ### Prerequisites
 
-TODO: List what developers need installed
+* **Python 3.10+**
+* **Ollama** installed and running on your local machine:
+  * Pull the default model: `ollama pull llama3.2` (or the model configured in `.env`)
+* **Discord Bot Token** with `Message Content` and `Guild Members` intents enabled.
 
-- Node.js 18+ / Python 3.9+ / Flutter SDK
-- npm / yarn / pnpm
-- [Any specific tools or accounts needed]
+---
 
-### Installation
-
-TODO: Provide detailed setup instructions
+### Installation & Run
 
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/AOSSIE-Org/TODO.git
-cd TODO
+git clone https://github.com/AOSSIE-Org/SkillBot.git
+cd SkillBot
 ```
 
-#### 2. Install Dependencies
+#### 2. Set Up Virtual Environment & Dependencies
+
+**Windows (PowerShell):**
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**macOS / Linux:**
 
 ```bash
-npm install
-# or
-yarn install
-# or
-pnpm install
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-#### 3. Configure Environment Variables(.env.example)
+#### 3. Configure Environment Variables
 
-Create a `.env` file in the root directory:
+Copy the `.env.example` file to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Fill in the configuration details:
 
 ```env
-# Add your environment variables here
-API_KEY=your_api_key
-DATABASE_URL=your_database_url
+DISCORD_TOKEN=your_discord_bot_token
+DISCORD_CHANNEL_ID=your_target_channel_id
+OLLAMA_MODEL=llama3.2
+SKILL_FILE_PATH=.clinerules
 ```
 
-#### 4. Run the Development Server
+#### 4. Launching the Bot
+
+Start the bot using Python:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+python bot.py
 ```
 
-#### 5. Open your Browser
-
-Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
-
-For detailed setup instructions, please refer to our [Installation Guide](./docs/INSTALL_GUIDE.md) (if you have one).
+*(On Windows, you can also use `start_bot_hidden.vbs` to execute the bot silently in the background)*.
 
 ---
 
-## 📱 App Screenshots
+## 🗺️ Roadmap & Evolution
 
-TODO: Add screenshots showcasing your application
-
-|  |  |  |
-|---|---|---|
-| Screenshot 1 | Screenshot 2 | Screenshot 3 |
+The long-term development of Skill Bot is divided into several milestones outlined in the [roadmap.md](https://github.com/AOSSIE-Org/SkillBot/blob/main/roadmap.md).
 
 ---
 
@@ -260,15 +221,14 @@ Thank you for considering contributing to this project! Contributions are highly
 
 TODO: Add maintainer information
 
-- [Maintainer Name](https://github.com/username)
-- [Maintainer Name](https://github.com/username)
+* [Karun Pacholi](https://github.com/kpj2006) - Lead Developer & Architect
+* [zahnentferner](https://github.com/Zahnentferner) - admin & reviewer
 
 ---
 
 ## 📍 License
 
-This project is licensed under the GNU General Public License v3.0.
-See the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for details.
 
 ---
 
@@ -276,6 +236,7 @@ See the [LICENSE](LICENSE) file for details.
 
 Thanks a lot for spending your time helping TODO grow. Keep rocking 🥂
 
-[![Contributors](https://contrib.rocks/image?repo=AOSSIE-Org/TODO)](https://github.com/AOSSIE-Org/TODO/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=AOSSIE-Org/SkillBot)](https://github.com/AOSSIE-Org/SkillBot/graphs/contributors)
 
-© 2025 AOSSIE
+
+© 2026 AOSSIE
